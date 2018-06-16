@@ -1,4 +1,4 @@
-import * as m from 'src/arithmetic';
+import * as m from './arithmetic';
 
 export class UInt256 {
   public buffer: ArrayBuffer = new ArrayBuffer(m.BYTES);

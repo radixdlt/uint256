@@ -81,7 +81,7 @@ export class UInt256 {
     const lval = (mutate && this) || this.copy();
     if (typeof rval === 'number') {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
-        throw new Error('NAN');
+        throw new TypeError('NAN');
       }
       m.add(lval.buffer, rval);
     } else {
@@ -97,7 +97,7 @@ export class UInt256 {
     const lval = (mutate && this) || this.copy();
     if (typeof rval === 'number') {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
-        throw new Error('NAN');
+        throw new TypeError('NAN');
       }
       m.sub(lval.buffer, rval);
     } else {
@@ -109,7 +109,7 @@ export class UInt256 {
   public divmod(rval: UInt256 | number): UInt256[] {
     if (typeof rval === 'number') {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
-        throw new Error('NAN');
+        throw new TypeError('NAN');
       }
       rval = new UInt256(m.numberToBuffer(rval));
     } else {
@@ -129,7 +129,7 @@ export class UInt256 {
   ): UInt256 {
     if (typeof rval === 'number') {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
-        throw new Error('NAN');
+        throw new TypeError('NAN');
       }
       rval = new UInt256(m.numberToBuffer(rval));
     } else {
@@ -152,7 +152,7 @@ export class UInt256 {
   ): UInt256 {
     if (typeof rval === 'number') {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
-        throw new Error('NAN');
+        throw new TypeError('NAN');
       }
       rval = new UInt256(m.numberToBuffer(rval));
     } else {
@@ -173,7 +173,7 @@ export class UInt256 {
     const lval = (mutate && this) || this.copy();
     if (typeof rval === 'number') {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
-        throw new Error('NAN');
+        throw new TypeError('NAN');
       }
       m.mul(lval.buffer, rval);
     } else {
@@ -189,7 +189,7 @@ export class UInt256 {
     const lval = (mutate && this) || this.copy();
     if (typeof rval === 'number') {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
-        throw new Error('NAN');
+        throw new TypeError('NAN');
       }
       m.and(lval.buffer, rval);
     } else {
@@ -205,7 +205,7 @@ export class UInt256 {
     const lval = (mutate && this) || this.copy();
     if (typeof rval === 'number') {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
-        throw new Error('NAN');
+        throw new TypeError('NAN');
       }
       m.andNot(lval.buffer, rval);
     } else {
@@ -218,7 +218,7 @@ export class UInt256 {
     const lval = (mutate && this) || this.copy();
     if (typeof rval === 'number') {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
-        throw new Error('NAN');
+        throw new TypeError('NAN');
       }
       m.or(lval.buffer, rval);
     } else {
@@ -234,7 +234,7 @@ export class UInt256 {
     const lval = (mutate && this) || this.copy();
     if (typeof rval === 'number') {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
-        throw new Error('NAN');
+        throw new TypeError('NAN');
       }
       m.xor(lval.buffer, rval);
     } else {
@@ -252,7 +252,7 @@ export class UInt256 {
   public shl(shift: number, mutate: boolean = this.isMutable): UInt256 {
     const lval = (mutate && this) || this.copy();
     if (shift < 0 || shift > m.JSNUMBER_MAX_INTEGER) {
-      throw new Error('NAN');
+      throw new TypeError('NAN');
     }
     m.shl(lval.buffer, shift);
     return lval;
@@ -261,7 +261,7 @@ export class UInt256 {
   public shr(shift: number, mutate: boolean = this.isMutable): UInt256 {
     const lval = (mutate && this) || this.copy();
     if (shift < 0 || shift > m.JSNUMBER_MAX_INTEGER) {
-      throw new Error('NAN');
+      throw new TypeError('NAN');
     }
     m.shr(lval.buffer, shift);
     return lval;
@@ -270,7 +270,7 @@ export class UInt256 {
   public eq(rval: UInt256 | number): boolean {
     if (typeof rval === 'number') {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
-        throw new Error('NAN');
+        throw new TypeError('NAN');
       }
       return m.eq(this.buffer, rval);
     }
@@ -285,7 +285,7 @@ export class UInt256 {
     let result: number;
     if (typeof rval === 'number') {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
-        throw new Error('NAN');
+        throw new TypeError('NAN');
       }
       result = m.cmp(this.buffer, rval);
     } else {
@@ -399,7 +399,7 @@ export class UInt256 {
     const lval = (mutate && this) || this.copy();
     if (typeof rval === 'number') {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
-        throw new Error('NAN');
+        throw new TypeError('NAN');
       }
       rval = new UInt256(m.numberToBuffer(rval));
     } else {
@@ -418,7 +418,7 @@ export class UInt256 {
     const lval = (mutate && this) || this.copy();
     if (typeof rval === 'number') {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
-        throw new Error('NAN');
+        throw new TypeError('NAN');
       }
       rval = new UInt256(m.numberToBuffer(rval));
     } else {

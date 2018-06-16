@@ -577,3 +577,63 @@ describe('max()', () => {
     expect(num).to.be.u256.eq(0xffff);
   });
 });
+
+describe('gcd()', () => {
+  it('should 1 gcd 2 = 1', () => {
+    expect(new UInt256(1).gcd(new UInt256(2))).to.be.u256.eq(1);
+  });
+
+  it('should 2 gcd 2 = 2', () => {
+    expect(new UInt256(2).gcd(new UInt256(2))).to.be.u256.eq(2);
+  });
+
+  it('should prime gcd prime2 = 1', () => {
+    expect(
+      new UInt256(
+        '0x2b3822a81114431f20a3a81ae29c373041edf1bc8616a1c8de3b01eb1a34b457d1d7'
+      ).gcd(
+        new UInt256(
+          '0x3c13c1531c37039c16320f13b18f1bb10e2c416b781aa3d7206a916c2dc1f71a626a35c30f'
+        )
+      )
+    ).to.be.u256.eq(1);
+  });
+
+  it('should prime gcd prime * prime2 = prime', () => {
+    const prime = new UInt256('0x4931b31b023830d2f9');
+    const prime2 = new UInt256('0x81d63713622fa141bf');
+    expect(prime.gcd(prime.mul(prime2))).to.be.u256.eq(prime);
+    expect(prime).to.be.u256.eq(new UInt256('0x4931b31b023830d2f9'));
+    expect(prime2).to.be.u256.eq(new UInt256('0x81d63713622fa141bf'));
+  });
+
+  it('should prime * prime2 gcd prime * prime3 = prime', () => {
+    const prime = new UInt256('0x4931b31b023830d2f9');
+    const prime2 = new UInt256('0x81d63713622fa141bf');
+    const prime3 = new UInt256('0xe3afe07cba21212f');
+    expect(prime.mul(prime2).gcd(prime.mul(prime3))).to.be.u256.eq(prime);
+    expect(prime).to.be.u256.eq(new UInt256('0x4931b31b023830d2f9'));
+    expect(prime2).to.be.u256.eq(new UInt256('0x81d63713622fa141bf'));
+    expect(prime3).to.be.u256.eq(new UInt256('0xe3afe07cba21212f'));
+  });
+
+  it('should prime gcd 0 should throw', () => {
+    const prime = new UInt256('0x4931b31b023830d2f9');
+    const zero = new UInt256(0);
+    expect(() => prime.gcd(zero)).to.throw(TypeError, 'DBZ');
+  });
+
+  it('should 0 gcd prime should throw', () => {
+    const prime = new UInt256('0x4931b31b023830d2f9');
+    const zero = new UInt256(0);
+    expect(() => prime.gcd(zero)).to.throw(TypeError, 'DBZ');
+  });
+
+  it('should test mutation', () => {
+    const num = new UInt256(4);
+    const num2 = new UInt256(6);
+    expect(num.gcd(num2, true)).to.be.u256.eq(2);
+    expect(num).to.be.u256.eq(2);
+    expect(num2).to.be.u256.eq(6);
+  });
+});

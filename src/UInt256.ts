@@ -90,6 +90,22 @@ export class UInt256 {
     return lval;
   }
 
+  public gcd(rval: UInt256, mutate: boolean = this.isMutable): UInt256 {
+    let t = this.mod(rval);
+    let num = rval.copy();
+    let denom = t;
+    while (denom.neq(0)) {
+      t = num.mod(denom, true);
+      num = denom;
+      denom = t;
+    }
+    if (!mutate) {
+      return num;
+    }
+    this.buffer = num.buffer;
+    return this;
+  }
+
   public sub(
     rval: UInt256 | number,
     mutate: boolean = this.isMutable

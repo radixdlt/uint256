@@ -228,7 +228,7 @@ export class UInt256 {
     mutate: boolean = this.isMutable
   ): UInt256 {
     const res = this.mul(rval);
-    if (res.div(this).neq(rval)) {
+    if (this.neq(0) && res.div(this).neq(rval)) {
       throw new TypeError('OF');
     }
     if (mutate) {

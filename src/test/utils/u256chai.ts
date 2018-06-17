@@ -2,16 +2,6 @@
 
 import { UInt256 } from 'src/UInt256';
 
-export declare namespace Chai {
-  export interface IU256Comparsion {
-    eq(expected: number | string | UInt256): boolean;
-  }
-  // tslint:disable-next-line
-  export interface Assertion {
-    u256: IU256Comparsion;
-  }
-}
-
 export function u256chai(): any {
   return function(this: any, chai: any, utils: any): any {
     chai.Assertion.addProperty('u256', function(this: any): any {
@@ -28,7 +18,7 @@ export function u256chai(): any {
               this._obj instanceof UInt256,
               'expected #{act} to be the instance of #{exp}',
               'expected #{act} to not be the instance of #{exp}',
-              'Integer',
+              'UInt256',
               typeof this._obj
             );
             fn.apply(this, [value, this._obj]);

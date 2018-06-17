@@ -90,6 +90,21 @@ export class UInt256 {
     return lval;
   }
 
+  public safeAdd(
+    rval: UInt256 | number,
+    mutate: boolean = this.isMutable
+  ): UInt256 {
+    const res = this.add(rval);
+    if (this.gt(res)) {
+      throw new TypeError('OF');
+    }
+    if (mutate) {
+      this.buffer = res.buffer;
+      return this;
+    }
+    return res;
+  }
+
   public gcd(rval: UInt256, mutate: boolean = this.isMutable): UInt256 {
     let t = this.mod(rval);
     let num = rval.copy();
@@ -120,6 +135,16 @@ export class UInt256 {
       m.sub(lval.buffer, rval.buffer);
     }
     return lval;
+  }
+
+  public safeSub(
+    rval: UInt256 | number,
+    mutate: boolean = this.isMutable
+  ): UInt256 {
+    if (this.lt(rval)) {
+      throw new TypeError('OF');
+    }
+    return this.sub(rval, mutate);
   }
 
   public divmod(rval: UInt256 | number): UInt256[] {
@@ -196,6 +221,21 @@ export class UInt256 {
       m.mul(lval.buffer, rval.buffer);
     }
     return lval;
+  }
+
+  public safeMul(
+    rval: UInt256 | number,
+    mutate: boolean = this.isMutable
+  ): UInt256 {
+    const res = this.mul(rval);
+    if (res.div(this).neq(rval)) {
+      throw new TypeError('OF');
+    }
+    if (mutate) {
+      this.buffer = res.buffer;
+      return this;
+    }
+    return res;
   }
 
   public and(

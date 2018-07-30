@@ -280,7 +280,10 @@ export function bits(lval: ArrayBuffer): number {
 }
 
 // lval = mod, rval = div
-export function divmod(lval: ArrayBuffer, rval: ArrayBuffer): number {
+export function divmod(lval: ArrayBuffer, rval?: ArrayBuffer): number {
+  if (!rval) {
+    return 1;
+  }
   const num = new Uint32Array(lval.slice(0));
   const lv = new Uint32Array(lval);
   const rv = new Uint32Array(rval);

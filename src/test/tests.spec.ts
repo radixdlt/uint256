@@ -1,3 +1,5 @@
+// tslint:disable:no-unused-expression
+
 import { expect, use } from 'chai';
 
 import { u256chai } from 'src/test/utils/u256chai';
@@ -42,7 +44,7 @@ describe('constructor()', () => {
   it('number', () => {
     const max = 0x1fffffffffffff;
     expect(new UInt256(max)).to.be.u256.eq(max);
-    expect(new UInt256(max + 2).toString(16)).to.be.eq('20000000000000');
+    expect(() => new UInt256(max + 2)).to.throw(TypeError, 'NAN');
   });
 });
 
@@ -50,6 +52,18 @@ describe('Addition', () => {
   const a = pair(1, 0);
   const b = pair(0, 1);
   const big = new UInt256(0).not();
+  const zero = new UInt256();
+
+  it('0 + 0 = 0', () => {
+    expect(zero.add(zero)).to.be.u256.eq(zero);
+    expect(zero.add(zero).buffer).to.be.undefined;
+  });
+
+  it('max + 1 = 0', () => {
+    const maxPlusOne = new UInt256().not().add(1);
+    expect(maxPlusOne).to.be.u256.eq(zero);
+    expect(maxPlusOne.buffer).to.be.undefined;
+  });
 
   it('1 + 1 = 2', () => {
     expect(a.add(1)).to.be.u256.eq(2);
@@ -80,7 +94,9 @@ describe('Subtraction', () => {
   const c = pair(2, 2);
 
   it('small - small = 0', () => {
-    expect(small.sub(small)).to.be.u256.eq(0);
+    const smallSubSmall = small.sub(small);
+    expect(smallSubSmall).to.be.u256.eq(0);
+    expect(smallSubSmall.buffer).to.be.undefined;
   });
 
   it('big - small = xor(big, small)', () => {
@@ -89,7 +105,9 @@ describe('Subtraction', () => {
   });
 
   it('big - big = 0', () => {
-    expect(big.sub(big)).to.be.u256.eq(0);
+    const bigSubBig = big.sub(big);
+    expect(bigSubBig).to.be.u256.eq(0);
+    expect(bigSubBig.buffer).to.be.undefined;
   });
 
   it('small - big = 2', () => {
@@ -109,9 +127,17 @@ describe('Multiplication', () => {
   const a = pair(1, 1);
 
   it('should test nullability', () => {
-    expect(one.mul(zero)).to.be.u256.eq(zero);
-    expect(zero.mul(one)).to.be.u256.eq(zero);
-    expect(zero.mul(zero)).to.be.u256.eq(zero);
+    const oneMulZero = one.mul(zero);
+    const zeroMulOne = zero.mul(one);
+    const zeroMulZero = zero.mul(zero);
+
+    expect(oneMulZero).to.be.u256.eq(zero);
+    expect(zeroMulOne).to.be.u256.eq(zero);
+    expect(zeroMulZero).to.be.u256.eq(zero);
+
+    expect(oneMulZero.buffer).to.be.undefined;
+    expect(zeroMulOne.buffer).to.be.undefined;
+    expect(zeroMulZero.buffer).to.be.undefined;
   });
 
   it('should test identity', () => {
@@ -120,7 +146,9 @@ describe('Multiplication', () => {
   });
 
   it('a * a = 0 modulo n, if a = (0, 1)', () => {
-    expect(a.sub(one).mul(a.sub(one))).to.be.u256.eq(zero);
+    const calc = a.sub(one).mul(a.sub(one));
+    expect(calc).to.be.u256.eq(zero);
+    expect(calc.buffer).to.be.undefined;
   });
 
   it('a * a = a * 2 - 1 modulo n, if a = (1, 1)', () => {
@@ -151,6 +179,25 @@ describe('Division | Modulo ', () => {
   const a = pair(1, 1);
   const b = pair(3, 2);
 
+  it('0 / 2 = 0 and mod = 0', () => {
+    const zeroDivTwo = zero.div(two);
+    const zeroModTwo = zero.mod(two);
+
+    expect(zeroDivTwo).to.be.u256.eq(zero);
+    expect(zeroModTwo).to.be.u256.eq(zero);
+
+    expect(zeroDivTwo.buffer).to.be.undefined;
+    expect(zeroModTwo.buffer).to.be.undefined;
+
+    const res = zero.divmod(two);
+
+    expect(res[0]).to.be.u256.eq(zero);
+    expect(res[1]).to.be.u256.eq(zero);
+
+    expect(res[0].buffer).to.be.undefined;
+    expect(res[1].buffer).to.be.undefined;
+  });
+
   it('a / 2 = a >> 2 and mod = 1', () => {
     expect(a.div(two)).to.be.u256.eq(a.shr(1));
     expect(a.mod(two)).to.be.u256.eq(one);
@@ -159,7 +206,7 @@ describe('Division | Modulo ', () => {
     expect(res[1]).to.be.u256.eq(one);
   });
 
-  it('a / b = 0 and mod = 0', () => {
+  it('a / b = 0 and mod = a', () => {
     expect(a.div(b)).to.be.u256.eq(zero);
     expect(a.mod(b)).to.be.u256.eq(a);
     const res = a.divmod(b);
@@ -206,11 +253,18 @@ describe('Division | Modulo ', () => {
 });
 
 describe('Negation', () => {
+  const zero = new UInt256();
   const a = pair(1, 1);
-  const b = new UInt256(0).not();
+  const b = zero.not();
 
   it('a xor b = not a', () => {
     expect(a.not()).to.be.u256.eq(a.xor(b));
+  });
+
+  it('not not 0 = 0', () => {
+    const zeroNotNot = zero.not().not();
+    expect(zeroNotNot).to.be.u256.eq(zero);
+    expect(zeroNotNot.buffer).to.be.undefined;
   });
 
   it('should test mutation', () => {
@@ -282,7 +336,9 @@ describe('AndNot', () => {
   });
 
   it('b and not a = 0', () => {
-    expect(b.andNot(a)).to.be.u256.eq(0);
+    const bAndNotA = b.andNot(a);
+    expect(bAndNotA).to.be.u256.eq(0);
+    expect(bAndNotA.buffer).to.be.undefined;
   });
 
   it('should test mutation', () => {
@@ -455,20 +511,19 @@ describe(' > ', () => {
 });
 
 describe('toJSON()', () => {
-  it('should test max value', () => {
-    const max = new UInt256(0).not();
-    expect(JSON.stringify(max)).to.eq(`"${String(new UInt256(max))}"`);
+  it('should test max javascript integer', () => {
+    const max = new UInt256(9007199254740991);
+    expect(new UInt256(JSON.parse(JSON.stringify(max)))).to.be.u256.eq(max);
   });
 });
 
 describe('toString()', () => {
   it('should test max value', () => {
-    const max = new UInt256(0).not();
-    expect(
-      Array.prototype.slice
-        .call(max.toString(16))
-        .filter((e: string) => e !== 'f').length
-    ).to.eq(0);
+    const max = new UInt256(0).not().toString(16);
+    expect(max.length).to.eq(64);
+    for (let i = 0; i < max.length; i += 1) {
+      expect(max.charAt(i)).to.be.eq('f');
+    }
   });
 
   it('should test max javascript integer', () => {
@@ -480,9 +535,7 @@ describe('toString()', () => {
 describe('valueOf()', () => {
   it('should test max javascript integer', () => {
     const max = new UInt256(9007199254740991);
-    const maxPlus2 = new UInt256(9007199254740993);
     expect(max).to.u256.eq(9007199254740991);
-    expect(maxPlus2.valueOf()).to.eq(9007199254740992);
   });
 });
 
@@ -536,6 +589,7 @@ describe('clearBit()', () => {
       .clearBit(4)
       .clearBit(6);
     expect(num).to.be.u256.eq(0);
+    expect(num.buffer).to.be.undefined;
   });
 });
 

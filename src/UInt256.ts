@@ -1,7 +1,7 @@
 import * as m from './arithmetic';
 
 export class UInt256 {
-  public buffer: ArrayBuffer = new ArrayBuffer(m.BYTES);
+  public buffer?: ArrayBuffer;
 
   public compareTo = this.cmp;
   public subtract = this.sub;
@@ -14,32 +14,48 @@ export class UInt256 {
 
   private isMutable: boolean = false;
 
-  constructor(numberOrBuffer: number | UInt256 | ArrayBuffer);
-  constructor(str: string, radix?: number);
+  constructor(numberOrBufferCopy?: number | UInt256 | ArrayBuffer);
+  constructor(str?: string, radix?: number);
   constructor(
-    param: string | number | UInt256 | ArrayBuffer,
+    param?: string | number | UInt256 | ArrayBuffer,
     radix: number = 10
   ) {
-    if (param instanceof ArrayBuffer) {
-      this.buffer = param;
+    if (!param) {
       return this;
+    }
+    if (param instanceof ArrayBuffer) {
+      if (param.byteLength === m.BYTES && !m.eq(param, 0)) {
+        this.buffer = param;
+      } else {
+        throw new TypeError('NAN');
+      }
+      return this.optimize();
     }
     if (param instanceof UInt256) {
-      this.buffer = param.buffer.slice(0);
-      return this;
-    }
-    if (typeof param === 'number') {
-      return new UInt256(param.toString(16), 16);
-    }
-    const prefixed = 'xX'.indexOf(param[1]) !== -1;
-    if (radix === 16 || prefixed) {
-      if (m.fromHex(this.buffer, param, prefixed)) {
-        throw new TypeError('NAN');
+      if (param.buffer) {
+        this.buffer = param.buffer.slice(0);
       }
       return this;
     }
+    if (typeof param === 'number') {
+      if (param < 0 || param > m.JSNUMBER_MAX_INTEGER) {
+        throw new TypeError('NAN');
+      }
+      if (param !== 0) {
+        this.buffer = m.numberToBuffer(param);
+      }
+      return this;
+    }
+    const prefixed = 'xX'.indexOf(param[1]) !== -1;
+    if (radix === 16 || prefixed) {
+      this.buffer = new ArrayBuffer(m.BYTES);
+      if (m.fromHex(this.buffer, param, prefixed)) {
+        throw new TypeError('NAN');
+      }
+      return this.optimize();
+    }
     if (radix > m.RADIX_MAX || radix < m.RADIX_MIN) {
-      radix = 10;
+      throw new TypeError('NAN');
     }
     for (let i = 0; i < param.length; i += 1) {
       const chr = parseInt(param.charAt(i), radix);
@@ -52,7 +68,7 @@ export class UInt256 {
   }
 
   public static valueOf(val: number): UInt256 {
-    return new UInt256(val.toString(16), 16);
+    return new UInt256(val);
   }
 
   public mutable(mutable: boolean = true): UInt256 {
@@ -61,17 +77,23 @@ export class UInt256 {
   }
 
   public pow(rval: number, mutate?: boolean): UInt256 {
-    rval = Math.max(rval, 0);
-    if (rval === 0) {
-      return this.div(this, mutate);
+    if (rval < 0) {
+      throw new Error('NAN');
     }
-    const self = (mutate && this) || this.copy();
+    const lval = (mutate && this) || this.copy();
+    if (rval === 0) {
+      lval.buffer = new UInt256(1).buffer;
+      return lval;
+    }
+    if (!lval.buffer) {
+      return lval;
+    }
     const rv = (mutate && this.copy()) || this;
     // tslint:disable-next-line:no-increment-decrement
     while (--rval) {
-      m.mul(self.buffer, rv.buffer);
+      m.mul(lval.buffer, <ArrayBuffer>rv.buffer);
     }
-    return self;
+    return lval.optimize();
   }
 
   public add(
@@ -83,11 +105,25 @@ export class UInt256 {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
         throw new TypeError('NAN');
       }
-      m.add(lval.buffer, rval);
-    } else {
-      m.add(lval.buffer, rval.buffer);
+      if (rval !== 0) {
+        if (!lval.buffer) {
+          lval.buffer = m.numberToBuffer(rval);
+          return lval;
+        }
+        m.add(lval.buffer, rval);
+        lval.optimize();
+      }
+      return lval;
     }
-    return lval;
+    if (!rval.buffer) {
+      return lval;
+    }
+    if (!lval.buffer) {
+      lval.buffer = rval.buffer.slice(0);
+      return lval;
+    }
+    m.add(lval.buffer, rval.buffer);
+    return lval.optimize();
   }
 
   public safeAdd(
@@ -130,11 +166,27 @@ export class UInt256 {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
         throw new TypeError('NAN');
       }
-      m.sub(lval.buffer, rval);
-    } else {
-      m.sub(lval.buffer, rval.buffer);
+      if (rval !== 0) {
+        if (!lval.buffer) {
+          lval.buffer = m.numberToBuffer(rval);
+          m.comp(lval.buffer);
+          return lval;
+        }
+        m.sub(lval.buffer, rval);
+        lval.optimize();
+      }
+      return lval;
     }
-    return lval;
+    if (!rval.buffer) {
+      return lval;
+    }
+    if (!lval.buffer) {
+      lval.buffer = rval.buffer.slice(0);
+      m.comp(lval.buffer);
+      return lval;
+    }
+    m.sub(lval.buffer, rval.buffer);
+    return lval.optimize();
   }
 
   public safeSub(
@@ -148,63 +200,46 @@ export class UInt256 {
   }
 
   public divmod(rval: UInt256 | number): UInt256[] {
-    if (typeof rval === 'number') {
-      if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
-        throw new TypeError('NAN');
-      }
-      rval = new UInt256(m.numberToBuffer(rval));
-    } else {
-      rval = rval.copy();
+    const lval = this.copy();
+    rval = new UInt256(rval);
+    if (!lval.buffer) {
+      return [lval, lval.copy()];
     }
-    const div = rval;
-    const mod = this.copy();
-    if (m.divmod(mod.buffer, div.buffer)) {
+    if (m.divmod(lval.buffer, rval.buffer)) {
       throw new TypeError('DBZ');
     }
-    return [div, mod];
+    return [rval.optimize(), lval.optimize()];
   }
 
   public div(
     rval: UInt256 | number,
     mutate: boolean = this.isMutable
   ): UInt256 {
-    if (typeof rval === 'number') {
-      if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
-        throw new TypeError('NAN');
-      }
-      rval = new UInt256(m.numberToBuffer(rval));
-    } else {
-      rval = rval.copy();
+    const lval = (mutate && this) || this.copy();
+    if (!lval.buffer) {
+      return lval;
     }
-    const div = rval;
-    const mod = this.copy();
-    if (m.divmod(mod.buffer, div.buffer)) {
+    rval = new UInt256(rval);
+    if (m.divmod(lval.buffer, rval.buffer)) {
       throw new TypeError('DBZ');
     }
-    if (mutate) {
-      this.buffer = div.buffer;
-    }
-    return div;
+    lval.buffer = rval.buffer;
+    return lval.optimize();
   }
 
   public mod(
     rval: UInt256 | number,
     mutate: boolean = this.isMutable
   ): UInt256 {
-    if (typeof rval === 'number') {
-      if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
-        throw new TypeError('NAN');
-      }
-      rval = new UInt256(m.numberToBuffer(rval));
-    } else {
-      rval = rval.copy();
+    const lval = (mutate && this) || this.copy();
+    if (!lval.buffer) {
+      return lval;
     }
-    const div = rval;
-    const mod = (mutate && this) || this.copy();
-    if (m.divmod(mod.buffer, div.buffer)) {
+    rval = new UInt256(rval);
+    if (m.divmod(lval.buffer, rval.buffer)) {
       throw new TypeError('DBZ');
     }
-    return mod;
+    return lval.optimize();
   }
 
   public mul(
@@ -212,15 +247,26 @@ export class UInt256 {
     mutate: boolean = this.isMutable
   ): UInt256 {
     const lval = (mutate && this) || this.copy();
+    if (!lval.buffer) {
+      return lval;
+    }
     if (typeof rval === 'number') {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
         throw new TypeError('NAN');
       }
+      if (rval === 0) {
+        delete lval.buffer;
+        return lval;
+      }
       m.mul(lval.buffer, rval);
-    } else {
-      m.mul(lval.buffer, rval.buffer);
+      return lval.optimize();
     }
-    return lval;
+    if (!rval.buffer) {
+      delete lval.buffer;
+      return lval;
+    }
+    m.mul(lval.buffer, rval.buffer);
+    return lval.optimize();
   }
 
   public safeMul(
@@ -228,7 +274,7 @@ export class UInt256 {
     mutate: boolean = this.isMutable
   ): UInt256 {
     if (this.eq(0)) {
-      return mutate && this || this.copy();
+      return (mutate && this) || this.copy();
     }
     const res = this.mul(rval);
     if (res.div(this).neq(rval)) {
@@ -246,14 +292,25 @@ export class UInt256 {
     mutate: boolean = this.isMutable
   ): UInt256 {
     const lval = (mutate && this) || this.copy();
+    if (!lval.buffer) {
+      return lval;
+    }
     if (typeof rval === 'number') {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
         throw new TypeError('NAN');
       }
+      if (rval === 0) {
+        delete lval.buffer;
+        return lval;
+      }
       m.and(lval.buffer, rval);
-    } else {
-      m.and(lval.buffer, rval.buffer);
+      return lval;
     }
+    if (!rval.buffer) {
+      delete lval.buffer;
+      return lval;
+    }
+    m.and(lval.buffer, rval.buffer);
     return lval;
   }
 
@@ -262,27 +319,46 @@ export class UInt256 {
     mutate: boolean = this.isMutable
   ): UInt256 {
     const lval = (mutate && this) || this.copy();
+    if (!lval.buffer) {
+      return lval;
+    }
     if (typeof rval === 'number') {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
         throw new TypeError('NAN');
       }
+      if (rval === 0) {
+        return lval;
+      }
       m.andNot(lval.buffer, rval);
-    } else {
-      m.andNot(lval.buffer, rval.buffer);
+      return lval.optimize();
     }
-    return lval;
+    if (!rval.buffer) {
+      return lval;
+    }
+    m.andNot(lval.buffer, rval.buffer);
+    return lval.optimize();
   }
 
   public or(rval: UInt256 | number, mutate: boolean = this.isMutable): UInt256 {
     const lval = (mutate && this) || this.copy();
+    if (!lval.buffer) {
+      lval.buffer = new UInt256(rval).buffer;
+      return lval;
+    }
     if (typeof rval === 'number') {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
         throw new TypeError('NAN');
       }
+      if (rval === 0) {
+        return lval;
+      }
       m.or(lval.buffer, rval);
-    } else {
-      m.or(lval.buffer, rval.buffer);
+      return lval;
     }
+    if (!rval.buffer) {
+      return lval;
+    }
+    m.or(lval.buffer, rval.buffer);
     return lval;
   }
 
@@ -291,21 +367,32 @@ export class UInt256 {
     mutate: boolean = this.isMutable
   ): UInt256 {
     const lval = (mutate && this) || this.copy();
+    if (!lval.buffer) {
+      lval.buffer = new UInt256(rval).buffer;
+      return lval;
+    }
     if (typeof rval === 'number') {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
         throw new TypeError('NAN');
       }
+      if (rval === 0) {
+        return lval;
+      }
       m.xor(lval.buffer, rval);
-    } else {
-      m.xor(lval.buffer, rval.buffer);
+      return lval.optimize();
     }
-    return lval;
+    if (!rval.buffer) {
+      return lval;
+    }
+    m.xor(lval.buffer, rval.buffer);
+    return lval.optimize();
   }
 
   public not(mutate: boolean = this.isMutable): UInt256 {
     const lval = (mutate && this) || this.copy();
+    lval.buffer = lval.buffer || new ArrayBuffer(m.BYTES);
     m.not(lval.buffer);
-    return lval;
+    return lval.optimize();
   }
 
   public shl(shift: number, mutate: boolean = this.isMutable): UInt256 {
@@ -313,8 +400,11 @@ export class UInt256 {
     if (shift < 0 || shift > m.JSNUMBER_MAX_INTEGER) {
       throw new TypeError('NAN');
     }
+    if (!lval.buffer) {
+      return lval;
+    }
     m.shl(lval.buffer, shift);
-    return lval;
+    return lval.optimize();
   }
 
   public shr(shift: number, mutate: boolean = this.isMutable): UInt256 {
@@ -322,8 +412,11 @@ export class UInt256 {
     if (shift < 0 || shift > m.JSNUMBER_MAX_INTEGER) {
       throw new TypeError('NAN');
     }
+    if (!lval.buffer) {
+      return lval;
+    }
     m.shr(lval.buffer, shift);
-    return lval;
+    return lval.optimize();
   }
 
   public eq(rval: UInt256 | number): boolean {
@@ -331,9 +424,15 @@ export class UInt256 {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
         throw new TypeError('NAN');
       }
+      if (!this.buffer) {
+        return rval === 0;
+      }
       return m.eq(this.buffer, rval);
     }
-    return m.eq(this.buffer, rval.buffer);
+    if (!this.buffer) {
+      return !rval.buffer || m.eq(rval.buffer, 0);
+    }
+    return m.eq(this.buffer, rval.buffer || 0);
   }
 
   public neq(rval: UInt256 | number): boolean {
@@ -341,16 +440,22 @@ export class UInt256 {
   }
 
   public cmp(rval: UInt256 | number): number {
-    let result: number;
     if (typeof rval === 'number') {
       if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
         throw new TypeError('NAN');
       }
-      result = m.cmp(this.buffer, rval);
-    } else {
-      result = m.cmp(this.buffer, rval.buffer);
+      if (!this.buffer) {
+        return (rval > 0 && -1) || (rval < 0 && 1) || 0;
+      }
+      return m.cmp(this.buffer, rval);
     }
-    return result;
+    if (!this.buffer) {
+      if (!rval.buffer) {
+        return 0;
+      }
+      return m.cmp(rval.buffer, 0) * -1;
+    }
+    return m.cmp(this.buffer, rval.buffer || 0);
   }
 
   public lte(rval: UInt256 | number): boolean {
@@ -370,14 +475,23 @@ export class UInt256 {
   }
 
   public copy(): UInt256 {
+    if (!this.buffer) {
+      return new UInt256();
+    }
     return new UInt256(this.buffer.slice(0));
   }
 
   public valueOf(): number {
+    if (!this.buffer) {
+      return 0;
+    }
     return m.toNumber(this.buffer);
   }
 
   public toString(radix: number = 10): string {
+    if (!this.buffer) {
+      return '0';
+    }
     if (radix === 16) {
       return m.toHex(this.buffer);
     }
@@ -394,7 +508,7 @@ export class UInt256 {
     do {
       divmod = divmod[0].divmod(radix);
       out = m.ALPHABET.charAt(divmod[1].valueOf() & m.BYTE_MASK) + out;
-    } while (m.cmp(divmod[0].buffer, 0) > 0);
+    } while (divmod[0].buffer);
     return out;
   }
 
@@ -403,10 +517,16 @@ export class UInt256 {
   }
 
   public toByteArray(): Uint8Array {
+    if (!this.buffer) {
+      return new Uint8Array(new ArrayBuffer(m.BYTES));
+    }
     return new Uint8Array(this.buffer.slice(0));
   }
 
   public testBit(n: number): boolean {
+    if (!this.buffer) {
+      return false;
+    }
     const buffer = this.buffer.slice(0);
     m.shr(buffer, n);
     m.and(buffer, 1);
@@ -415,6 +535,7 @@ export class UInt256 {
 
   public setBit(n: number, mutate: boolean = this.isMutable): UInt256 {
     const lval = (mutate && this) || this.copy();
+    lval.buffer = lval.buffer || new ArrayBuffer(m.BYTES);
     const nbuffer = new ArrayBuffer(m.BYTES);
     m.add(nbuffer, 1);
     m.shl(nbuffer, n);
@@ -424,31 +545,39 @@ export class UInt256 {
 
   public flipBit(n: number, mutate: boolean = this.isMutable): UInt256 {
     const lval = (mutate && this) || this.copy();
+    lval.buffer = lval.buffer || new ArrayBuffer(m.BYTES);
     const nbuffer = new ArrayBuffer(m.BYTES);
     m.add(nbuffer, 1);
     m.shl(nbuffer, n);
     m.xor(lval.buffer, nbuffer);
-    return lval;
+    return lval.optimize();
   }
 
   public clearBit(n: number, mutate: boolean = this.isMutable): UInt256 {
     const lval = (mutate && this) || this.copy();
+    if (!lval.buffer) {
+      return lval;
+    }
     const nbuffer = new ArrayBuffer(m.BYTES);
     m.add(nbuffer, 1);
     m.shl(nbuffer, n);
     m.not(nbuffer);
     m.and(lval.buffer, nbuffer);
-    return lval;
+    return lval.optimize();
   }
 
   public bitCount(): number {
+    if (!this.buffer) {
+      return 0;
+    }
     return m.pop(this.buffer);
   }
 
   public negate(mutate: boolean = this.isMutable): UInt256 {
     const lval = (mutate && this) || this.copy();
+    lval.buffer = lval.buffer || new ArrayBuffer(m.BYTES);
     m.comp(lval.buffer);
-    return lval;
+    return lval.optimize();
   }
 
   public min(
@@ -456,14 +585,7 @@ export class UInt256 {
     mutate: boolean = this.isMutable
   ): UInt256 {
     const lval = (mutate && this) || this.copy();
-    if (typeof rval === 'number') {
-      if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
-        throw new TypeError('NAN');
-      }
-      rval = new UInt256(m.numberToBuffer(rval));
-    } else {
-      rval = rval.copy();
-    }
+    rval = new UInt256(rval);
     if (rval.lt(lval)) {
       lval.buffer = rval.buffer;
     }
@@ -475,18 +597,21 @@ export class UInt256 {
     mutate: boolean = this.isMutable
   ): UInt256 {
     const lval = (mutate && this) || this.copy();
-    if (typeof rval === 'number') {
-      if (rval < 0 || rval > m.JSNUMBER_MAX_INTEGER) {
-        throw new TypeError('NAN');
-      }
-      rval = new UInt256(m.numberToBuffer(rval));
-    } else {
-      rval = rval.copy();
-    }
+    rval = new UInt256(rval);
     if (rval.gt(lval)) {
       lval.buffer = rval.buffer;
     }
     return lval;
+  }
+
+  private optimize(): UInt256 {
+    if (!this.buffer) {
+      return this;
+    }
+    if (m.eq(this.buffer, 0)) {
+      delete this.buffer;
+    }
+    return this;
   }
 }
 

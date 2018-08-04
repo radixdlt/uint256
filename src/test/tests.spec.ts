@@ -45,6 +45,9 @@ describe('constructor()', () => {
     const max = 0x1fffffffffffff;
     expect(new UInt256(max)).to.be.u256.eq(max);
     expect(() => new UInt256(max + 2)).to.throw(TypeError, 'NAN');
+    for (let i = 2; i < 9007199254740992; i *= 2) {
+      expect(new UInt256(i).valueOf()).to.be.eq(i);
+    }
   });
 });
 

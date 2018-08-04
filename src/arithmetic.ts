@@ -11,7 +11,6 @@ export const DWORDS = BYTES / 4;
 export const DWORD_LENGTH = 32;
 export const DWORD_MASK = 0xffffffff;
 
-export const JSNUMBER_LENGTH_DIFF = 11;
 export const JSNUMBER_MAX_INTEGER = 9007199254740991;
 
 export const RADIX_MIN = 2;
@@ -82,7 +81,7 @@ export function numberToBuffer(num: number): ArrayBuffer {
   const buffer = new ArrayBuffer(BYTES);
   const buffer32 = new Uint32Array(buffer);
   buffer32[0] = num;
-  buffer32[1] = num >>> JSNUMBER_LENGTH_DIFF;
+  buffer32[1] = num / (DWORD_MASK + 1);
   return buffer;
 }
 
@@ -174,7 +173,7 @@ export function eq(lval: ArrayBuffer, rval: ArrayBuffer | number): boolean {
         return false;
       }
     }
-    if (lv[1] !== rval >>> JSNUMBER_LENGTH_DIFF) {
+    if (lv[1] !== ~~(rval / (DWORD_MASK + 1))) {
       return false;
     }
     const mem = new Uint32Array(1);

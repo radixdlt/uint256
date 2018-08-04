@@ -1,6 +1,6 @@
 {
   "name": "uint256",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "unsigned 256bit integer type for javascript and typescript",
   "main": "./dist/Uint256.js",
   "scripts": {

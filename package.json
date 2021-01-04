@@ -1,8 +1,8 @@
 {
   "name": "uint256",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "unsigned 256bit integer type for javascript and typescript",
-  "main": "./dist/Uint256.js",
+  "main": "./dist/UInt256.js",
   "scripts": {
     "test": "mocha -r ts-node/register -r tsconfig-paths/register src/**/*.spec.ts",
     "build": "rm -rf ./dist && tsc -p tsconfig.compile.json",

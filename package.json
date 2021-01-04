@@ -1,6 +1,6 @@
 {
   "name": "@radixdlt/uint256",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "description": "unsigned 256bit integer type for javascript and typescript",
   "main": "./dist/UInt256.js",
   "scripts": {
